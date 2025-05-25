@@ -4,7 +4,68 @@ document.addEventListener('DOMContentLoaded', () => {
     attribution: '&copy; OpenStreetMap & CartoDB',
     subdomains: 'abcd'
   }).addTo(map);
+let userMarker = null;
+  let accuracyCircle = null;
 
+  function onLocationFound(position) {
+    const lat = position.coords.latitude;
+    const lng = position.coords.longitude;
+    const acc = position.coords.accuracy;
+
+    if (!userMarker) {
+      userMarker = L.marker([lat, lng], { title: 'You are here' }).addTo(map);
+      accuracyCircle = L.circle([lat, lng], { radius: acc }).addTo(map);
+    } else {
+      userMarker.setLatLng([lat, lng]);
+      accuracyCircle.setLatLng([lat, lng]).setRadius(acc);
+    }
+  }
+
+  function onLocationError(err) {
+    console.warn('Geolocation error:', err.message);
+  }
+
+  if ('geolocation' in navigator) {
+    // watchPosition will update marker as user moves
+    navigator.geolocation.watchPosition(onLocationFound, onLocationError, {
+      enableHighAccuracy: true,
+      maximumAge: 10000,
+      timeout: 5000
+    });
+  } else {
+    console.warn('Geolocation not supported');
+  }
+
+  // 2) “Center on me” button
+  const locateBtn = L.control({ position: 'topright' });
+  locateBtn.onAdd = () => {
+    const btn = L.DomUtil.create('button', 'locate-btn');
+    btn.type = 'button';
+    btn.title = 'Center map on my location';
+    btn.innerHTML = '📍';
+    // avoid map panning when clicking the button
+    L.DomEvent.disableClickPropagation(btn);
+
+    btn.onclick = () => {
+      if (userMarker) {
+        map.setView(userMarker.getLatLng(), 15);
+      } else {
+        // retry a one-time locate
+        navigator.geolocation.getCurrentPosition(
+          pos => {
+            const ll = [pos.coords.latitude, pos.coords.longitude];
+            map.setView(ll, 15);
+          },
+          onLocationError,
+          { enableHighAccuracy: true }
+        );
+      }
+    };
+
+    return btn;
+  };
+  locateBtn.addTo(map);
+  
   const routeLines = {}, busLayers = {}, stopLayers = {};
   let selected = null; // {route, dir} або null
 
