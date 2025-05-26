@@ -154,7 +154,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isNaN(lat)||isNaN(lng)) continue;
         L.circleMarker([lat,lng], {
           radius:3, fill:'#fff', color:'#000', weight:1
-        }).addTo(stopLayer);
+        }).addTo(stopLayer)
+        .bindPopup(
+          `<strong>${s.stopName || s.name || 'Зупинка'}</strong>`
+        );
       }
     }
   }
