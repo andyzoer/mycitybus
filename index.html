@@ -29,25 +29,24 @@
   <nav class="navbar is-light has-shadow" role="navigation" aria-label="main navigation">
     <div class="navbar-brand">
       <a role="button"
-        id="sidebar-toggle"
-        class="navbar-item"
+        id="toggle-routes-btn"
+        class="navbar-item is-active"
         aria-label="Toggle sidebar"
-        aria-expanded="false">
-        <span class="icon"><i class="fas fa-bars"></i></span><span>Обрати маршрути</span>
+        aria-expanded="true">
+        <span class="icon"><i class="fas fa-bars"></i></span><span>Маршрути</span>
       </a>
       <a id="toggle-stops-btn" class="navbar-item" role="button"
          aria-pressed="false" title="Показати/сховати зупинки">
         <span class="icon"><i class="fas fa-map-marker-alt"></i></span>
-        <span>Показувати зупинки</span>
+        <span>Зупинки</span>
       </a>
     </div>
   </nav>
   <aside id="sidebar"
          class="menu"
          style="width: 220px; position: absolute; top:3.25rem; left:0; bottom:0; overflow-y:auto; background:#fff; z-index: 1000;">
-    <p class="menu-label">Маршрути</p>
+    <p class="menu-label">Оберіть маршрути</p>
     <ul class="menu-list" id="routes-list"></ul>
-    <p class="menu-label mt-4">Опції</p>
   </aside>
 
   <!-- Map -->

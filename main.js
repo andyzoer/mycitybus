@@ -10,7 +10,8 @@ document.addEventListener('DOMContentLoaded', () => {
   let userMarker     = null;
   let accuracyCircle = null;
   let selectedRoute  = null;   // { route, dir } або null
-  let showStops      = false;  // чи відображати зупинки
+  let showStops      = false;  // чи відображати 
+  let showRoutes     = true;
 
   // Шари
   const layers = {
@@ -189,7 +190,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const div = document.createElement('div');
       div.className = 'route-item';
       div.innerHTML = `
-        <strong>${route}</strong>
+        <span style="display:inline-block;min-width:3em;"><strong>${route}</strong></span>
         <label><input type="checkbox" data-route="${route}" data-dir="0">↑</label>
         <label><input type="checkbox" data-route="${route}" data-dir="1">↓</label>
       `;
@@ -218,8 +219,12 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // === 7. Toggle sidebar ===
-  document.getElementById('sidebar-toggle').addEventListener('click', () => {
+  document.getElementById('toggle-routes-btn').addEventListener('click', () => {
     document.getElementById('sidebar').classList.toggle('is-hidden');
+    showRoutes = !showRoutes;
+    const btn = document.getElementById('toggle-routes-btn');
+    btn.classList.toggle('is-active', showRoutes);
+    btn.setAttribute('aria-pressed', showRoutes);
   });
 
   // === 8. Toggle stops button ===
@@ -240,6 +245,26 @@ document.addEventListener('DOMContentLoaded', () => {
         map.removeLayer(layer);
       }
     });
+  });
+
+  // десь після ініціалізації map і buildSidebar()
+
+  const sidebar = document.getElementById('sidebar');
+  const mapContainer = map.getContainer();
+
+  mapContainer.addEventListener('pointerdown', e => {
+    // якщо це саме touch-подія
+    if (e.pointerType === 'touch') {
+      // 1) скидаємо виділення
+      selectedRoute = null;
+      updateHighlight();
+      // 2) ховаємо сайдбар, якщо відкритий
+      sidebar.classList.add('is-hidden');
+      showRoutes = false;
+      const btn = document.getElementById('toggle-routes-btn');
+      btn.classList.remove('is-active');
+      btn.setAttribute('aria-pressed', showRoutes);
+    }
   });
 
   // === 9. Скидання виділення по кліку на карту ===
