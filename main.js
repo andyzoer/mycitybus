@@ -113,9 +113,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // === 6. Плавне оновлення маркерів ===
-  async function updateBusMarkers(route) {
+  async function updateBusMarkers(route, dir) {
     const url = `https://uaservice.kentkart.com/rl1/web/pathInfo?region=118&lang=uk&authType=4`
-              + `&displayRouteCode=${encodeURIComponent(route)}&direction=&resultType=010000`;
+              + `&displayRouteCode=${encodeURIComponent(route)}&direction=${dir}&resultType=010000`;
     let json;
   try {
     json = await fetch(url).then(r => r.json());
@@ -181,9 +181,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // === 7. Завантажити полілінію і маркери разом ===
-  async function loadRoute(route) {
+  async function loadRoute(route, dir) {
     const url = `https://uaservice.kentkart.com/rl1/web/pathInfo?region=118&lang=uk&authType=4`
-              + `&displayRouteCode=${encodeURIComponent(route)}&direction=&resultType=110000`;
+              + `&displayRouteCode=${encodeURIComponent(route)}&direction=${dir}&resultType=110000`;
     let json;
     try { json = await fetch(url).then(r=>r.json()); }
     catch (e) { console.error('Fetch route error',e); return; }
@@ -198,17 +198,17 @@ document.addEventListener('DOMContentLoaded', () => {
         layers.routes[route][dir] = poly;
       }
       // markers
-      await updateBusMarkers(route);
+      await updateBusMarkers(route, dir);
       // stops
       if (showStops) {
-        await loadStops(route);
+        await loadStops(route, dir);
         getLayer(layers.stops, route, dir).addTo(map);
       }
     }
   }
-      async function loadStops(route) {
+      async function loadStops(route, dir) {
         const url = `https://uaservice.kentkart.com/rl1/web/pathInfo?region=118&lang=uk&authType=4`
-                  + `&displayRouteCode=${encodeURIComponent(route)}&direction=&resultType=0110000`;
+                  + `&displayRouteCode=${encodeURIComponent(route)}&direction=${dir}&resultType=0110000`;
         let json;
         try { json = await fetch(url).then(r=>r.json()); }
         catch (e) { console.error('Fetch stops error',e); return; }
@@ -264,26 +264,32 @@ document.addEventListener('DOMContentLoaded', () => {
       list.append(div);
     });
 
-    list.querySelectorAll('input[type=checkbox]').forEach(cb => {
-      cb.addEventListener('change', async () => {
-        const route = cb.dataset.route, dir = +cb.dataset.dir;
-        if (cb.checked) {
-          await loadRoute(route);
-          const poly = layers.routes[route]?.[dir];
-          if (poly) poly.addTo(map);
-          getLayer(layers.buses, route, dir).addTo(map);
+    list.addEventListener('change', async e => {
+        const cb = e.target;
+        if (!cb.matches('input[type="checkbox"]')) return;
 
+        const route = cb.dataset.route;
+        const dir   = +cb.dataset.dir;
+
+        if (cb.checked) {
+          // якщо ставимо галочку — завантажуємо полілінію, маркери й (за потреби) зупинки
+          await loadRoute(route, dir);
+          layers.routes[route][dir]?.addTo(map);
+          layers.buses[route][dir]?.addTo(map);
           if (showStops) {
-            await loadStops(route);
-            getLayer(layers.stops, route, dir).addTo(map);
+            await loadStops(route, dir);
+            layers.stops[route][dir]?.addTo(map);
           }
         } else {
-          if (layers.routes[route]?.[dir]) map.removeLayer(layers.routes[route]?.[dir]);
-          if (layers.buses[route]?.[dir]) map.removeLayer(getLayer(layers.buses, route, dir));
-          if (layers.stops[route]?.[dir]) map.removeLayer(getLayer(layers.stops, route, dir));
+          // якщо знімаємо галочку — ховаємо всі відповідні шари
+          if (layers.routes[route]?.[dir]) map.removeLayer(layers.routes[route][dir]);
+          if (layers.buses[route]?.[dir])  map.removeLayer(layers.buses[route][dir]);
+          if (layers.stops[route]?.[dir])  map.removeLayer(layers.stops[route][dir]);
         }
+
+        // 3) Після будь-якої зміни чекбоксу оновлюємо прогрес-бар
+        updateProgressVisibility();
       });
-    });
   }
 
  // === 11. Кнопки ===
@@ -306,7 +312,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const r = cb.dataset.route, d = +cb.dataset.dir;
         const stopLayer = getLayer(layers.stops, r, d);
         if (showStops) {
-          loadStops(r).then(() => stopLayer.addTo(map));
+          loadStops(r,d).then(() => stopLayer.addTo(map));
         } else {
          if (stopLayer) map.removeLayer(stopLayer);
         }
@@ -335,8 +341,47 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // === 12. Старт ===
   buildSidebar();
+
+  const progressContainer = document.getElementById('progress-container');
+  // елемент прогрес-бару
+  const progressBar = document.getElementById('progress-bar');
+  // тривалість між оновленнями (ms) — у вас 10000
+  const UPDATE_INTERVAL = 10000;
+
+  // Функція, що повертає true, якщо є хоч один показаний маршрут
+  function anyRouteVisible() {
+    return document.querySelectorAll('#routes-list input[type=checkbox]:checked').length > 0;
+  }
+
+  // Показати/сховати прогрес-бар залежно від наявності видимих маршрутів
+  function updateProgressVisibility() {
+    if (anyRouteVisible()) {
+      progressContainer.style.display = 'block';
+    } else {
+      progressContainer.style.display = 'none';
+    }
+  }
+
+  function startProgressAnimation() {
+  //  updateProgressVisibility();
+    if (!anyRouteVisible()) return;
+    // обнуляємо і швидко "скидаємо" transition
+    progressBar.style.transition = 'none';
+    progressBar.style.width = '0%';
+    // даємо браузеру час застосувати стилі
+    requestAnimationFrame(() => {
+      // через наступний рендер задаємо transition і повну ширину
+      progressBar.style.transition = `width ${UPDATE_INTERVAL}ms linear`;
+      progressBar.style.width = '100%';
+    });
+  }
+
+  // Нарешті, перезапускаємо анімацію з інтервалом
+  startProgressAnimation();
   setInterval(() => {
     document.querySelectorAll('#routes-list input[type=checkbox]:checked')
-      .forEach(cb => updateBusMarkers(cb.dataset.route));
-  }, 10000);
+      .forEach(cb => updateBusMarkers(cb.dataset.route, +cb.dataset.dir));
+
+    startProgressAnimation();
+  }, UPDATE_INTERVAL);
 });

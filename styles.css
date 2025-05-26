@@ -83,3 +83,23 @@
       /* анімувати зміну позиції */
       transition: transform 0.5s ease-out;
     }
+
+    /* Контейнер смужки */
+    #progress-container {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 4px;         /* тонка смужка */
+      margin: 0; padding: 0;
+      background: rgba(0,0,0,0.1);
+      z-index: 1000;
+    }
+
+    /* Анімована заливка */
+    #progress-bar {
+      height: 100%;
+      width: 0%;
+      background: #1978c8;
+      transition: width linear;
+    }
