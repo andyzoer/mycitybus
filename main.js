@@ -1,4 +1,15 @@
 document.addEventListener('DOMContentLoaded', () => {
+  // === Persisted settings ===
+  const STORAGE_KEY = 'mycitybus_settings';
+  function saveSettings(settings) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+  }
+  function loadSettings() {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    return stored ? JSON.parse(stored) : { selected: [], showStops: false };
+  }
+  let settings = loadSettings();
+
   // === 1. Конфігурація ===
   const INITIAL_VIEW = { center: [50.7472, 25.3254], zoom: 13 };
   const GEO_OPTIONS  = { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 };
@@ -262,6 +273,15 @@ document.addEventListener('DOMContentLoaded', () => {
         <label><input type="checkbox" data-route="${route}" data-dir="1">↓</label>
       `;
       list.append(div);
+      // restore checked state
+      div.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+        const key = `${cb.dataset.route}_${cb.dataset.dir}`;
+        if (settings.selected.includes(key)) {
+          cb.checked = true;
+          // trigger initial load
+          cb.dispatchEvent(new Event('change'));
+        }
+      });
     });
 
     list.addEventListener('change', async e => {
@@ -289,6 +309,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 3) Після будь-якої зміни чекбоксу оновлюємо прогрес-бар
         updateProgressVisibility();
+
+        // persist selected checkboxes
+        settings.selected = Array.from(
+          document.querySelectorAll('#routes-list input[type="checkbox"]:checked')
+        ).map(cb => `${cb.dataset.route}_${cb.dataset.dir}`);
+        saveSettings(settings);
       });
   }
 
@@ -306,6 +332,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const btn = document.getElementById('toggle-stops-btn');
     btn.classList.toggle('is-active', showStops);
     btn.setAttribute('aria-pressed', showStops);
+
+    settings.showStops = showStops;
+    saveSettings(settings);
 
     document.querySelectorAll('#routes-list input[type=checkbox]:checked')
       .forEach(cb => {
@@ -341,6 +370,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // === 12. Старт ===
   buildSidebar();
+
+  // restore showStops button
+  const stopsBtn = document.getElementById('toggle-stops-btn');
+  if (settings.showStops) {
+    showStops = true;
+    stopsBtn.classList.add('is-active');
+    stopsBtn.setAttribute('aria-pressed', 'true');
+  }
 
   const progressContainer = document.getElementById('progress-container');
   // елемент прогрес-бару
