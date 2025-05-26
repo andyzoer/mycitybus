@@ -273,15 +273,6 @@ document.addEventListener('DOMContentLoaded', () => {
         <label><input type="checkbox" data-route="${route}" data-dir="1">↓</label>
       `;
       list.append(div);
-      // restore checked state
-      div.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-        const key = `${cb.dataset.route}_${cb.dataset.dir}`;
-        if (settings.selected.includes(key)) {
-          cb.checked = true;
-          // trigger initial load
-          cb.dispatchEvent(new Event('change'));
-        }
-      });
     });
 
     list.addEventListener('change', async e => {
@@ -370,6 +361,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // === 12. Старт ===
   buildSidebar();
+
+  // restore selected routes from localStorage
+  settings.selected.forEach(key => {
+    const [route, dir] = key.split('_');
+    const cb = document.querySelector(
+      `#routes-list input[data-route="${route}"][data-dir="${dir}"]`
+    );
+    if (cb) {
+      cb.checked = true;
+      cb.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  });
 
   // restore showStops button
   const stopsBtn = document.getElementById('toggle-stops-btn');
