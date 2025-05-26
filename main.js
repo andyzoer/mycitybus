@@ -1,78 +1,86 @@
 document.addEventListener('DOMContentLoaded', () => {
-  const map = L.map('map').setView([50.7472, 25.3254], 13);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap & CartoDB',
-    subdomains: 'abcd'
-  }).addTo(map);
-let userMarker = null;
+  // === 1. Конфігурація ===
+  const INITIAL_VIEW = { center: [50.7472, 25.3254], zoom: 13 };
+  const GEO_OPTIONS  = { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 };
+
+  const BUS_ROUTES     = ['1','2','3','5','7','9','10','11','12','19','22','22A','24','25','26','26А','27А','28','30','31','32'];
+  const TROLLEY_ROUTES = ['1','2','3','4','4А','5','12','15','15А'];
+  const ALL_ROUTES     = [...BUS_ROUTES.map(r => 'А'+r), ...TROLLEY_ROUTES.map(r => 'T'+r)];
+
+  let userMarker     = null;
   let accuracyCircle = null;
+  let selectedRoute  = null;   // { route, dir } або null
+  let showStops      = false;  // чи відображати зупинки
 
-  function onLocationFound(position) {
-    const lat = position.coords.latitude;
-    const lng = position.coords.longitude;
-    const acc = position.coords.accuracy;
+  // Шари
+  const layers = {
+    routes: {},  // layers.routes[route][dir] = L.Polyline
+    buses:  {},  // layers.buses[route][dir]  = L.LayerGroup
+    stops:  {}   // layers.stops[route][dir]  = L.LayerGroup
+  };
 
+  // === 2. Ініціалізація карти ===
+  const map = L.map('map', {
+    center: INITIAL_VIEW.center,
+    zoom:   INITIAL_VIEW.zoom,
+    zoomControl: false
+  });
+
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap & CartoDB'
+  }).addTo(map);
+
+  L.control.zoom({ position: 'topright' }).addTo(map);
+
+  // === 3. Геолокація ===
+  map.on('locationfound', e => {
+    const { latitude: lat, longitude: lng, accuracy: acc } = e;
     if (!userMarker) {
-      userMarker = L.marker([lat, lng], { title: 'You are here' }).addTo(map);
+      userMarker = L.marker([lat, lng], { title: 'Ви тут' }).addTo(map);
       accuracyCircle = L.circle([lat, lng], { radius: acc }).addTo(map);
     } else {
       userMarker.setLatLng([lat, lng]);
       accuracyCircle.setLatLng([lat, lng]).setRadius(acc);
     }
-  }
+  });
+  map.on('locationerror', e => {
+    console.error('Geolocation error:', e.message);
+  });
 
-  function onLocationError(err) {
-    console.warn('Geolocation error:', err.message);
-  }
+  // === 4. Кастомні контролі ===
+  // 4.1 Знайти мене
+  const LocateControl = L.Control.extend({
+    options: { position: 'bottomright' },
+    onAdd() {
+      const c = L.DomUtil.create('div','leaflet-bar leaflet-control');
+      const a = L.DomUtil.create('a','',c);
+      a.href = '#'; a.title = 'Знайти мене';
+      a.innerHTML = '<i class="fas fa-crosshairs"></i>';
+      L.DomEvent.disableClickPropagation(c);
+      L.DomEvent.on(a,'click',L.DomEvent.stop)
+               .on(a,'click',() => map.locate({ setView: true, maxZoom: 15, ...GEO_OPTIONS }));
+      return c;
+    }
+  });
+  map.addControl(new LocateControl());
 
-  if ('geolocation' in navigator) {
-    // watchPosition will update marker as user moves
-    navigator.geolocation.watchPosition(onLocationFound, onLocationError, {
-      enableHighAccuracy: true,
-      maximumAge: 10000,
-      timeout: 5000
-    });
-  } else {
-    console.warn('Geolocation not supported');
-  }
+  // 4.2 Додому
+  const HomeControl = L.Control.extend({
+    options: { position: 'bottomright' },
+    onAdd() {
+      const c = L.DomUtil.create('div','leaflet-bar leaflet-control');
+      const a = L.DomUtil.create('a','',c);
+      a.href = '#'; a.title = 'Початковий вигляд';
+      a.innerHTML = '<i class="fas fa-home"></i>';
+      L.DomEvent.disableClickPropagation(c);
+      L.DomEvent.on(a,'click',L.DomEvent.stop)
+               .on(a,'click',() => map.setView(INITIAL_VIEW.center, INITIAL_VIEW.zoom));
+      return c;
+    }
+  });
+  map.addControl(new HomeControl());
 
-  // 2) “Center on me” button
-  const locateBtn = L.control({ position: 'topright' });
-  locateBtn.onAdd = () => {
-    const btn = L.DomUtil.create('button', 'locate-btn');
-    btn.type = 'button';
-    btn.title = 'Center map on my location';
-    btn.innerHTML = '📍';
-    // avoid map panning when clicking the button
-    L.DomEvent.disableClickPropagation(btn);
-
-    btn.onclick = () => {
-      if (userMarker) {
-        map.setView(userMarker.getLatLng(), 15);
-      } else {
-        // retry a one-time locate
-        navigator.geolocation.getCurrentPosition(
-          pos => {
-            const ll = [pos.coords.latitude, pos.coords.longitude];
-            map.setView(ll, 15);
-          },
-          onLocationError,
-          { enableHighAccuracy: true }
-        );
-      }
-    };
-
-    return btn;
-  };
-  locateBtn.addTo(map);
-  
-  const routeLines = {}, busLayers = {}, stopLayers = {};
-  let selected = null; // {route, dir} або null
-
-  const BUS_ROUTES     = ['1','2','3','5','7','9','10','11','12','19','22','24','25','26','26А','27А','28','30','31','32'];
-  const TROLLEY_ROUTES = ['1','2','3','4','4А','5','12','15','15А'];
-  const ALL_ROUTES = [...BUS_ROUTES.map(r=>'А'+r), ...TROLLEY_ROUTES.map(r=>'T'+r)];
-
+  // === 5. Логіка маршрутів і зупинок ===
   function getRouteColor(route, dir) {
     const idx = ALL_ROUTES.indexOf(route);
     const hue = (idx / ALL_ROUTES.length) * 360;
@@ -80,162 +88,168 @@ let userMarker = null;
   }
 
   function createBadgeIcon(route, bearing, dir) {
-    const size=28, c=size/2, r=9, aLen=4;
+    const size = 28, c = size/2, r = 9, aLen = 4;
     const color = route.startsWith('T') ? 'darkblue' : 'black';
     const svg = `
-      <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
+      <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
         <polygon points="${c-r/2},${c+r*0.8} ${c+r/2},${c+r*0.8} ${c},${c+r+aLen}"
                  fill="${color}"
                  transform="rotate(${bearing},${c},${c})"/>
-        <circle cx="${c}" cy="${c}" r="${r}" fill="${color}" stroke="black"/>
-        <text x="${c}" y="${c}" fill="white" font-size="8"
-              text-anchor="middle" dominant-baseline="central" font-family="sans-serif">${route}</text>
+        <circle cx="${c}" cy="${c}" r="${r}" fill="${color}" stroke="#000"/>
+        <text x="${c}" y="${c}" fill="#fff" font-size="8"
+              text-anchor="middle" dominant-baseline="central"
+              font-family="sans-serif">${route}</text>
       </svg>`;
     return L.divIcon({ html: svg, className:'', iconSize:[size,size], iconAnchor:[c,c] });
   }
 
-  function getBusLayer(route, dir) {
-    busLayers[route] ||= {};
-    return busLayers[route][dir] ||= L.layerGroup();
-  }
-  function getStopLayer(route, dir) {
-    stopLayers[route] ||= {};
-    return stopLayers[route][dir] ||= L.layerGroup();
+  function getLayer(group, route, dir) {
+    group[route] ||= {};
+    return group[route][dir] ||= L.layerGroup();
   }
 
-  async function loadRouteAndBuses(route) {
-    const url = `https://uaservice.kentkart.com/rl1/web/pathInfo?region=118&lang=uk&authType=4` +
-                `&displayRouteCode=${encodeURIComponent(route)}&direction=&resultType=110000`;
-    const { pathList } = await (await fetch(url)).json();
-    pathList.forEach(path => {
+  async function loadRoute(route) {
+    const url = `https://uaservice.kentkart.com/rl1/web/pathInfo?region=118&lang=uk&authType=4`
+              + `&displayRouteCode=${encodeURIComponent(route)}&direction=&resultType=110000`;
+    let json;
+    try { json = await fetch(url).then(r=>r.json()); }
+    catch (e) { console.error('Fetch route error',e); return; }
+
+    for (const path of json.pathList||[]) {
       const dir = +path.direction;
-      if (!routeLines[route]?.[dir] && path.pointList.length) {
+      if (!layers.routes[route]?.[dir] && path.pointList.length) {
         const pts = path.pointList.map(p=>[+p.lat,+p.lng]);
-        routeLines[route] ||= {};
-        routeLines[route][dir] = L.polyline(pts, { color:getRouteColor(route,dir), weight:3 });
+        const poly = L.polyline(pts, { color:getRouteColor(route,dir), weight:3 });
+        layers.routes[route] ||= {}; layers.routes[route][dir] = poly;
       }
-      const layer = getBusLayer(route,dir);
-      layer.clearLayers();
-      path.busList.forEach(b => {
-        const lat=+b.lat, lng=+b.lng, bearing=+b.bearing||0;
-        if (isNaN(lat)||isNaN(lng)) return;
-        const m = L.marker([lat,lng], { icon:createBadgeIcon(route,bearing,dir) });
+      const busLayer = getLayer(layers.buses, route, dir);
+      busLayer.clearLayers();
+      for (const b of path.busList||[]) {
+        const lat = +b.lat, lng = +b.lng;
+        if (isNaN(lat)||isNaN(lng)) continue;
+        const m = L.marker([lat,lng], { icon: createBadgeIcon(route,+b.bearing||0,dir) });
         m.on('click', e=>{
           e.originalEvent.stopPropagation();
-          selected = {route, dir};
+          selectedRoute = {route, dir};
           updateHighlight();
         });
-        m.addTo(layer);
-      });
-    });
+        m.addTo(busLayer);
+      }
+      // якщо showStops, додаємо зупинки після route завантажилось
+      if (showStops) {
+        await loadStops(route);
+        getLayer(layers.stops, route, dir).addTo(map);
+      }
+    }
   }
 
-  async function loadRouteStops(route) {
-    const url = `https://uaservice.kentkart.com/rl1/web/pathInfo?region=118&lang=uk&authType=4` +
-                `&displayRouteCode=${encodeURIComponent(route)}&direction=&resultType=0110000`;
-    const { pathList } = await (await fetch(url)).json();
-    pathList.forEach(path => {
-      const dir=+path.direction;
-      const layer=getStopLayer(route,dir);
-      if (layer.getLayers().length) return;
-      path.busStopList.forEach(s=>{
-        const lat=+s.lat, lng=+s.lng;
-        if (!isNaN(lat)&&!isNaN(lng)) {
-          L.circleMarker([lat,lng], { radius:3, fill:'#fff', color:'#000', weight:1 }).addTo(layer);
-        }
-      });
-    });
+  async function loadStops(route) {
+    const url = `https://uaservice.kentkart.com/rl1/web/pathInfo?region=118&lang=uk&authType=4`
+              + `&displayRouteCode=${encodeURIComponent(route)}&direction=&resultType=0110000`;
+    let json;
+    try { json = await fetch(url).then(r=>r.json()); }
+    catch (e) { console.error('Fetch stops error',e); return; }
+
+    for (const path of json.pathList||[]) {
+      const dir = +path.direction;
+      const stopLayer = getLayer(layers.stops, route, dir);
+      if (stopLayer.getLayers().length) continue;
+      for (const s of path.busStopList||[]) {
+        const lat = +s.lat, lng = +s.lng;
+        if (isNaN(lat)||isNaN(lng)) continue;
+        L.circleMarker([lat,lng], {
+          radius:3, fill:'#fff', color:'#000', weight:1
+        }).addTo(stopLayer);
+      }
+    }
   }
 
   function updateHighlight() {
-    Object.entries(routeLines).forEach(([route, dirs])=>{
-      Object.entries(dirs).forEach(([d, poly])=>{
-        const match = selected && route===selected.route && +d===selected.dir;
-        poly.setStyle({ opacity: match||!selected ? 1 : 0.2 });
-      });
-    });
-    Object.entries(busLayers).forEach(([route, dirs])=>{
-      Object.entries(dirs).forEach(([d, layer])=>{
-        layer.eachLayer(marker=>{
-          const match = selected && route===selected.route && +d===selected.dir;
-          marker.setOpacity(match||!selected ? 1 : 0.2);
-        });
-      });
-    });
-    Object.entries(stopLayers).forEach(([route, dirs])=>{
-      Object.entries(dirs).forEach(([d, layer])=>{
-        layer.eachLayer(stop=>{
-          const match = selected && route===selected.route && +d===selected.dir;
-          stop.setStyle({ opacity: match||!selected ? 1 : 0.2 });
-        });
-      });
-    });
+    for (const [r, dirs] of Object.entries(layers.routes)) {
+      for (const [d, poly] of Object.entries(dirs)) {
+        const ok = selectedRoute && selectedRoute.route===r && +selectedRoute.dir===+d;
+        poly.setStyle({ opacity: ok||!selectedRoute ? 1 : 0.2 });
+      }
+    }
+    for (const group of [layers.buses, layers.stops]) {
+      for (const [r, dirs] of Object.entries(group)) {
+        for (const [d, layer] of Object.entries(dirs)) {
+          layer.eachLayer(item=>{
+            const ok = selectedRoute && selectedRoute.route===r && +selectedRoute.dir===+d;
+            if (item.setOpacity)     item.setOpacity(ok||!selectedRoute ? 1 : 0.2);
+            else if (item.setStyle)  item.setStyle({ opacity: ok||!selectedRoute ? 1 : 0.2 });
+          });
+        }
+      }
+    }
   }
 
+  // === 6. Побудова сайдбару ===
   function buildSidebar() {
-    const sb=document.getElementById('sidebar');
-    sb.innerHTML=`
-      <label><input type="checkbox" id="toggle-stops"> Показати зупинки</label><hr>
-      <div id="routes-list"></div>`;
-    const cont=sb.querySelector('#routes-list');
-    ALL_ROUTES.forEach(route=>{
-      const div=document.createElement('div');
-      div.className='route-item';
-      div.innerHTML=`
-        <div style="min-width:40px;display:inline-block;"><strong>${route}</strong></div>
+    const list = document.getElementById('routes-list');
+    ALL_ROUTES.forEach(route => {
+      const div = document.createElement('div');
+      div.className = 'route-item';
+      div.innerHTML = `
+        <strong>${route}</strong>
         <label><input type="checkbox" data-route="${route}" data-dir="0">↑</label>
-        <label><input style="margin-left:4px" type="checkbox" data-route="${route}" data-dir="1">↓</label>`;
-      cont.append(div);
+        <label><input type="checkbox" data-route="${route}" data-dir="1">↓</label>
+      `;
+      list.append(div);
     });
 
-    cont.querySelectorAll('input[type=checkbox]').forEach(cb=>{
-      cb.addEventListener('change', async e=>{
-        const r=e.target.dataset.route, d=+e.target.dataset.dir;
-        if(e.target.checked){
-          await loadRouteAndBuses(r);
-          routeLines[r][d].addTo(map);
-          getBusLayer(r,d).addTo(map);
-          if(document.getElementById('toggle-stops').checked){
-            await loadRouteStops(r);
-            getStopLayer(r,d).addTo(map);
-          }
+    list.querySelectorAll('input[type=checkbox]').forEach(cb => {
+      cb.addEventListener('change', async () => {
+        const route = cb.dataset.route, dir = +cb.dataset.dir;
+        if (cb.checked) {
+          await loadRoute(route);
+          layers.routes[route][dir].addTo(map);
+          getLayer(layers.buses, route, dir).addTo(map);
         } else {
-          map.removeLayer(routeLines[r]?.[d]);
-          map.removeLayer(getBusLayer(r,d));
-          map.removeLayer(getStopLayer(r,d));
-        }
-      });
-    });
-
-    sb.querySelector('#toggle-stops').addEventListener('change', e=>{
-      const show=e.target.checked;
-      cont.querySelectorAll('input[type=checkbox]:checked').forEach(cb=>{
-        const r=cb.dataset.route, d=+cb.dataset.dir;
-        if(show){
-          loadRouteStops(r).then(()=>getStopLayer(r,d).addTo(map));
-        } else {
-          map.removeLayer(getStopLayer(r,d));
+          map.removeLayer(layers.routes[route]?.[dir]);
+          map.removeLayer(getLayer(layers.buses, route, dir));
+          map.removeLayer(getLayer(layers.stops, route, dir));
         }
       });
     });
   }
 
-  map.on('click', ()=>{ selected=null; updateHighlight(); });
+  // === 7. Toggle sidebar ===
+  document.getElementById('sidebar-toggle').addEventListener('click', () => {
+    document.getElementById('sidebar').classList.toggle('is-hidden');
+  });
 
-  buildSidebar();
-const body = document.getElementsByTagName('body')[0];
-const sidebar = document.getElementById('sidebar');
-const toggle  = document.createElement('div');
-toggle.id   = 'sidebar-toggle';
-toggle.innerHTML = '&#9664;';
-body.appendChild(toggle);
+  // === 8. Toggle stops button ===
+  document.getElementById('toggle-stops-btn').addEventListener('click', () => {
+    showStops = !showStops;
+    const btn = document.getElementById('toggle-stops-btn');
+    btn.classList.toggle('is-active', showStops);
+    btn.setAttribute('aria-pressed', showStops);
 
-toggle.addEventListener('click', () => {
-  body.classList.toggle('sidebar-collapsed');
-});
-  setInterval(()=>{
-    document.querySelectorAll('#routes-list input:checked').forEach(cb=>{
-      loadRouteAndBuses(cb.dataset.route);
+    // додати або прибрати всі шари зупинок для вже відображених маршрутів
+    document.querySelectorAll('#routes-list input:checked').forEach(cb => {
+      const r = cb.dataset.route, d = +cb.dataset.dir;
+      const layer = getLayer(layers.stops, r, d);
+      if (showStops) {
+        // якщо ще не створений, створимо зупинки
+        loadStops(r).then(() => layer.addTo(map));
+      } else {
+        map.removeLayer(layer);
+      }
     });
-  },10000);
+  });
+
+  // === 9. Скидання виділення по кліку на карту ===
+  map.on('click', () => {
+    selectedRoute = null;
+    updateHighlight();
+  });
+
+  // === 10. Старт ===
+  buildSidebar();
+  setInterval(() => {
+    document.querySelectorAll('#routes-list input:checked').forEach(cb => {
+      loadRoute(cb.dataset.route);
+    });
+  }, 10000);
 });

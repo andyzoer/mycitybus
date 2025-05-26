@@ -1,0 +1,79 @@
+
+    body,
+    html {
+      margin: 0;
+      height: 100%;
+      font-family: sans-serif;
+    }
+
+    #map {
+      width: 100%;
+      height: 100%;
+    }
+
+    .route-badge {
+      position: relative;
+      background: #1978c8;
+      color: white;
+      font-weight: bold;
+      font-size: 10px;
+      text-align: center;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      line-height: 20px;
+      box-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
+      font-family: sans-serif;
+    }
+
+    .route-arrow {
+      position: absolute;
+      width: 0;
+      height: 0;
+      border-left: 4px solid transparent;
+      border-right: 4px solid transparent;
+      border-top: 6px solid black;
+      top: 50%;
+      left: 50%;
+      transform-origin: 50% 50%;
+    }
+
+    #sidebar {
+      overflow: hidden;
+      overflow-y: auto;
+      padding: 1rem!important;
+      max-height: 100vh;
+    }
+
+    #sidebar.is-hidden{
+      display: none;
+    }
+
+    .route-item {
+      margin-bottom: 6px;
+    }
+
+    .route-item label {
+      margin-left: 4px;
+    }
+
+    body.sidebar-collapsed #sidebar {
+      display: none;
+    }
+
+    /* Приберемо будь-які внутрішні відступи в секції */
+    .section.is-fullheight.is-paddingless {
+      padding-top: 0;
+      padding-bottom: 0;
+    }
+
+    /* make the navbar a positioning context */
+    .navbar {
+      position: relative;
+    }
+
+    /* підсвічуємо кнопку, коли активна */
+    #toggle-stops-btn.is-active {
+      background-color: #1978c8;
+      color: #fff;
+    }

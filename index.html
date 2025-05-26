@@ -2,136 +2,60 @@
 <html lang="uk">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Bus Map</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <style>
-    body,
-    html {
-      margin: 0;
-      height: 100%;
-      font-family: sans-serif;
-    }
 
-    #map {
-      width: 100%;
-      height: 100%;
-    }
+  <!-- Bulma CSS -->
+  <link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css"
+  />
+  <!-- Leaflet CSS -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  />
+  <!-- Font Awesome для іконок -->
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+  />
 
-    .route-badge {
-      position: relative;
-      background: #1978c8;
-      color: white;
-      font-weight: bold;
-      font-size: 10px;
-      text-align: center;
-      border-radius: 50%;
-      width: 20px;
-      height: 20px;
-      line-height: 20px;
-      box-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
-      font-family: sans-serif;
-    }
-
-    .route-arrow {
-      position: absolute;
-      width: 0;
-      height: 0;
-      border-left: 4px solid transparent;
-      border-right: 4px solid transparent;
-      border-top: 6px solid black;
-      top: 50%;
-      left: 50%;
-      transform-origin: 50% 50%;
-    }
-
-    #sidebar {
-      position: absolute;
-      top: 10px;
-      left: 50px;
-      max-height: 90%;
-      width: 200px;
-      overflow-y: auto;
-      padding: 10px;
-      background: white;
-      box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
-      z-index: 1000;
-    }
-
-    #sidebar h2 {
-      margin-top: 0;
-      font-size: 16px;
-    }
-
-    .route-item {
-      margin-bottom: 6px;
-    }
-
-    .route-item label {
-      margin-left: 4px;
-    }
-
-    #sidebar {
-      position: absolute;
-      top: 10px;
-      width: 200px;
-      max-height: 90%;
-      overflow: hidden;
-      overflow-y: auto;
-      background: white;
-      padding: 10px;
-      box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
-    }
-
-    body.sidebar-collapsed #sidebar {
-      display: none;
-    }
-
-    #sidebar-toggle {
-      position: absolute;
-      top: 80px;
-      left: 10px;
-      width: 30px;
-      height: 30px;
-      background: white;
-      border: 2px solid #ccc;
-      border-radius: 3px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      z-index: 10000;
-    }
-
-    body.sidebar-collapsed #sidebar-toggle {
-      transform: rotate(180deg);
-    }
-
-    .locate-btn {
-      background: white;
-      border: 1px solid #888;
-      border-radius: 4px;
-      width: 30px;
-      height: 30px;
-      font-size: 18px;
-      line-height: 28px;
-      text-align: center;
-      cursor: pointer;
-    }
-    .locate-btn:hover {
-      background: #f0f0f0;
-    }
-  </style>
+  <!-- Власний CSS -->
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <div id="map"></div>
-  <div id="sidebar">
-    <h2>Маршрути</h2>
-    <div id="routes-list">
+  <!-- Top Navbar -->
+  <nav class="navbar is-light has-shadow" role="navigation" aria-label="main navigation">
+    <div class="navbar-brand">
+      <a role="button"
+        id="sidebar-toggle"
+        class="navbar-item"
+        aria-label="Toggle sidebar"
+        aria-expanded="false">
+        <span class="icon"><i class="fas fa-bars"></i></span><span>Обрати маршрути</span>
+      </a>
+      <a id="toggle-stops-btn" class="navbar-item" role="button"
+         aria-pressed="false" title="Показати/сховати зупинки">
+        <span class="icon"><i class="fas fa-map-marker-alt"></i></span>
+        <span>Показувати зупинки</span>
+      </a>
     </div>
-  </div>
-  <div id="map"></div>
+  </nav>
+  <aside id="sidebar"
+         class="menu"
+         style="width: 220px; position: absolute; top:3.25rem; left:0; bottom:0; overflow-y:auto; background:#fff; z-index: 1000;">
+    <p class="menu-label">Маршрути</p>
+    <ul class="menu-list" id="routes-list"></ul>
+    <p class="menu-label mt-4">Опції</p>
+  </aside>
+
+  <!-- Map -->
+  <div id="map" style="width: 100%; height: calc(100vh - 3.25rem);"></div>
+
+  <!-- Leaflet JS -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- Ваш основний скрипт -->
   <script src="main.js"></script>
 </body>
 </html>
