@@ -78,3 +78,8 @@
       background-color: #1978c8;
       color: #fff;
     }
+
+    .leaflet-marker-icon {
+      /* анімувати зміну позиції */
+      transition: transform 0.5s ease-out;
+    }

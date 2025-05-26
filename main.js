@@ -6,7 +6,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const BUS_ROUTES     = ['1','2','3','5','7','9','10','11','12','19','22','22A','24','25','26','26А','27А','28','30','31','32'];
   const TROLLEY_ROUTES = ['1','2','3','4','4А','5','12','15','15А'];
   const ALL_ROUTES     = [...BUS_ROUTES.map(r => 'А'+r), ...TROLLEY_ROUTES.map(r => 'T'+r)];
-
+  
+  const busMarkers = {};  
+  
   let userMarker     = null;
   let accuracyCircle = null;
   let selectedRoute  = null;   // { route, dir } або null
@@ -110,6 +112,75 @@ document.addEventListener('DOMContentLoaded', () => {
     return group[route][dir] ||= L.layerGroup();
   }
 
+  // === 6. Плавне оновлення маркерів ===
+  async function updateBusMarkers(route) {
+    const url = `https://uaservice.kentkart.com/rl1/web/pathInfo?region=118&lang=uk&authType=4`
+              + `&displayRouteCode=${encodeURIComponent(route)}&direction=&resultType=010000`;
+    let json;
+  try {
+    json = await fetch(url).then(r => r.json());
+  } catch (e) {
+    console.error('Fetch buses error', e);
+    return;
+  }
+
+  for (const path of json.pathList || []) {
+    const dir = +path.direction;
+
+    // Ініціалізуємо сховища
+    layers.buses[route] ||= {};
+    busMarkers[route]   ||= {};
+    busMarkers[route][dir] ||= {};
+
+    // Ініціалізуємо шар, якщо ще не було
+    if (!layers.buses[route][dir]) {
+      layers.buses[route][dir] = L.layerGroup().addTo(map);
+    }
+    const layer    = layers.buses[route][dir];
+    const existing = busMarkers[route][dir];
+    const seen     = {};
+
+    // Обробка кожного автобуса
+    for (const b of path.busList || []) {
+      const id      = b.busId;
+      const lat     = +b.lat;
+      const lng     = +b.lng;
+      const bearing = +b.bearing || 0;
+      if (isNaN(lat) || isNaN(lng)) continue;
+
+      if (existing[id]) {
+        // Оновлюємо позицію та кут
+        existing[id].setLatLng([lat, lng]);
+        existing[id].setIcon(createBadgeIcon(route, bearing, dir));
+      } else {
+        // Створюємо новий маркер
+        const marker = L.marker([lat, lng], {
+          icon: createBadgeIcon(route, bearing, dir)
+        }).addTo(layer);
+
+        marker.on('click', e => {
+          e.originalEvent.stopPropagation();
+          selectedRoute = { route, dir };
+          updateHighlight();
+        });
+
+        existing[id] = marker;
+      }
+
+      seen[id] = true;
+    }
+
+    // Видаляємо маркери, що більше не в списку
+    for (const oldId of Object.keys(existing)) {
+      if (!seen[oldId]) {
+        layer.removeLayer(existing[oldId]);
+        delete existing[oldId];
+      }
+    }
+  }
+  }
+
+  // === 7. Завантажити полілінію і маркери разом ===
   async function loadRoute(route) {
     const url = `https://uaservice.kentkart.com/rl1/web/pathInfo?region=118&lang=uk&authType=4`
               + `&displayRouteCode=${encodeURIComponent(route)}&direction=&resultType=110000`;
@@ -119,50 +190,45 @@ document.addEventListener('DOMContentLoaded', () => {
 
     for (const path of json.pathList||[]) {
       const dir = +path.direction;
+      // polyline
       if (!layers.routes[route]?.[dir] && path.pointList.length) {
         const pts = path.pointList.map(p=>[+p.lat,+p.lng]);
-        const poly = L.polyline(pts, { color:getRouteColor(route,dir), weight:3 });
-        layers.routes[route] ||= {}; layers.routes[route][dir] = poly;
+        const poly = L.polyline(pts, { color:getRouteColor(route,dir), weight:3 }).addTo(map);;
+        layers.routes[route] ||= {};
+        layers.routes[route][dir] = poly;
       }
-      const busLayer = getLayer(layers.buses, route, dir);
-      busLayer.clearLayers();
-      for (const b of path.busList||[]) {
-        const lat = +b.lat, lng = +b.lng;
-        if (isNaN(lat)||isNaN(lng)) continue;
-        const m = L.marker([lat,lng], { icon: createBadgeIcon(route,+b.bearing||0,dir) });
-        m.on('click', e=>{
-          e.originalEvent.stopPropagation();
-          selectedRoute = {route, dir};
-          updateHighlight();
-        });
-        m.addTo(busLayer);
+      // markers
+      await updateBusMarkers(route);
+      // stops
+      if (showStops) {
+        await loadStops(route);
+        getLayer(layers.stops, route, dir).addTo(map);
       }
     }
   }
+      async function loadStops(route) {
+        const url = `https://uaservice.kentkart.com/rl1/web/pathInfo?region=118&lang=uk&authType=4`
+                  + `&displayRouteCode=${encodeURIComponent(route)}&direction=&resultType=0110000`;
+        let json;
+        try { json = await fetch(url).then(r=>r.json()); }
+        catch (e) { console.error('Fetch stops error',e); return; }
 
-  async function loadStops(route) {
-    const url = `https://uaservice.kentkart.com/rl1/web/pathInfo?region=118&lang=uk&authType=4`
-              + `&displayRouteCode=${encodeURIComponent(route)}&direction=&resultType=0110000`;
-    let json;
-    try { json = await fetch(url).then(r=>r.json()); }
-    catch (e) { console.error('Fetch stops error',e); return; }
-
-    for (const path of json.pathList||[]) {
-      const dir = +path.direction;
-      const stopLayer = getLayer(layers.stops, route, dir);
-      if (stopLayer.getLayers().length) continue;
-      for (const s of path.busStopList||[]) {
-        const lat = +s.lat, lng = +s.lng;
-        if (isNaN(lat)||isNaN(lng)) continue;
-        L.circleMarker([lat,lng], {
-          radius:3, fill:'#fff', color:'#000', weight:1
-        }).addTo(stopLayer)
-        .bindPopup(
-          `<strong>${s.stopName || s.name || 'Зупинка'}</strong>`
-        );
+        for (const path of json.pathList||[]) {
+          const dir = +path.direction;
+          const stopLayer = getLayer(layers.stops, route, dir);
+          if (stopLayer.getLayers().length) continue;
+          for (const s of path.busStopList||[]) {
+            const lat = +s.lat, lng = +s.lng;
+            if (isNaN(lat)||isNaN(lng)) continue;
+            L.circleMarker([lat,lng], {
+              radius:3, fill:'#fff', color:'#000', weight:1
+            }).addTo(stopLayer)
+            .bindPopup(
+              `<strong>${s.stopName || s.name || 'Зупинка'}</strong>`
+            );
+          }
+        }
       }
-    }
-  }
 
   function updateHighlight() {
     for (const [r, dirs] of Object.entries(layers.routes)) {
@@ -203,7 +269,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const route = cb.dataset.route, dir = +cb.dataset.dir;
         if (cb.checked) {
           await loadRoute(route);
-          layers.routes[route][dir].addTo(map);
+          const poly = layers.routes[route]?.[dir];
+          if (poly) poly.addTo(map);
           getLayer(layers.buses, route, dir).addTo(map);
 
           if (showStops) {
@@ -211,15 +278,15 @@ document.addEventListener('DOMContentLoaded', () => {
             getLayer(layers.stops, route, dir).addTo(map);
           }
         } else {
-          map.removeLayer(layers.routes[route]?.[dir]);
-          map.removeLayer(getLayer(layers.buses, route, dir));
-          map.removeLayer(getLayer(layers.stops, route, dir));
+          if (layers.routes[route]?.[dir]) map.removeLayer(layers.routes[route]?.[dir]);
+          if (layers.buses[route]?.[dir]) map.removeLayer(getLayer(layers.buses, route, dir));
+          if (layers.stops[route]?.[dir]) map.removeLayer(getLayer(layers.stops, route, dir));
         }
       });
     });
   }
 
-  // === 7. Toggle sidebar ===
+ // === 11. Кнопки ===
   document.getElementById('toggle-routes-btn').addEventListener('click', () => {
     document.getElementById('sidebar').classList.toggle('is-hidden');
     showRoutes = !showRoutes;
@@ -228,38 +295,30 @@ document.addEventListener('DOMContentLoaded', () => {
     btn.setAttribute('aria-pressed', showRoutes);
   });
 
-  // === 8. Toggle stops button ===
   document.getElementById('toggle-stops-btn').addEventListener('click', () => {
     showStops = !showStops;
     const btn = document.getElementById('toggle-stops-btn');
     btn.classList.toggle('is-active', showStops);
     btn.setAttribute('aria-pressed', showStops);
 
-    // додати або прибрати всі шари зупинок для вже відображених маршрутів
-    document.querySelectorAll('#routes-list input:checked').forEach(cb => {
-      const r = cb.dataset.route, d = +cb.dataset.dir;
-      const layer = getLayer(layers.stops, r, d);
-      if (showStops) {
-        // якщо ще не створений, створимо зупинки
-        loadStops(r).then(() => layer.addTo(map));
-      } else {
-        map.removeLayer(layer);
-      }
-    });
+    document.querySelectorAll('#routes-list input[type=checkbox]:checked')
+      .forEach(cb => {
+        const r = cb.dataset.route, d = +cb.dataset.dir;
+        const stopLayer = getLayer(layers.stops, r, d);
+        if (showStops) {
+          loadStops(r).then(() => stopLayer.addTo(map));
+        } else {
+         if (stopLayer) map.removeLayer(stopLayer);
+        }
+      });
   });
 
-  // десь після ініціалізації map і buildSidebar()
-
+  // дотик по карті ховає sidebar
   const sidebar = document.getElementById('sidebar');
-  const mapContainer = map.getContainer();
-
-  mapContainer.addEventListener('pointerdown', e => {
-    // якщо це саме touch-подія
-    if (e.pointerType === 'touch') {
-      // 1) скидаємо виділення
+  map.getContainer().addEventListener('pointerdown', e => {
+    if (e.pointerType==='touch') {
       selectedRoute = null;
       updateHighlight();
-      // 2) ховаємо сайдбар, якщо відкритий
       sidebar.classList.add('is-hidden');
       showRoutes = false;
       const btn = document.getElementById('toggle-routes-btn');
@@ -268,17 +327,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // === 9. Скидання виділення по кліку на карту ===
+  // клік мишею — лише знімає підсвітку
   map.on('click', () => {
     selectedRoute = null;
     updateHighlight();
   });
 
-  // === 10. Старт ===
+  // === 12. Старт ===
   buildSidebar();
   setInterval(() => {
-    document.querySelectorAll('#routes-list input:checked').forEach(cb => {
-      loadRoute(cb.dataset.route);
-    });
+    document.querySelectorAll('#routes-list input[type=checkbox]:checked')
+      .forEach(cb => updateBusMarkers(cb.dataset.route));
   }, 10000);
 });
