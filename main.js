@@ -339,6 +339,14 @@ document.addEventListener('DOMContentLoaded', () => {
       });
   });
 
+  // кнопка "Оновити" — негайне оновлення положення автобусів
+  document.getElementById('refresh-btn').addEventListener('click', () => {
+    document.querySelectorAll('#routes-list input[type="checkbox"]:checked')
+      .forEach(cb => updateBusMarkers(cb.dataset.route, +cb.dataset.dir));
+    // перезапустити анімацію прогрес-бару
+    startProgressAnimation();
+  });
+
   // дотик по карті ховає sidebar
   const sidebar = document.getElementById('sidebar');
   map.getContainer().addEventListener('pointerdown', e => {
