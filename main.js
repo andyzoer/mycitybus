@@ -181,6 +181,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const marker = L.marker([lat, lng], {
           icon: createBadgeIcon(route, bearing, dir)
         }).addTo(layer);
+        // зробити щойно створений маркер прозорим
+        marker.setOpacity(0.7);
         // assign a unique HTML id to the marker's DOM element
         const el = marker.getElement();
         if (el) el.id = `marker-${route}-${id}`;
