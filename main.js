@@ -94,7 +94,7 @@ document.addEventListener('DOMContentLoaded', () => {
       <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
         <polygon points="${c-r/2},${c+r*0.8} ${c+r/2},${c+r*0.8} ${c},${c+r+aLen}"
                  fill="${color}"
-                 transform="rotate(${bearing},${c},${c})"/>
+                 transform="rotate(${bearing+180},${c},${c})"/>
         <circle cx="${c}" cy="${c}" r="${r}" fill="${color}" stroke="#000"/>
         <text x="${c}" y="${c}" fill="#fff" font-size="8"
               text-anchor="middle" dominant-baseline="central"
@@ -134,11 +134,6 @@ document.addEventListener('DOMContentLoaded', () => {
           updateHighlight();
         });
         m.addTo(busLayer);
-      }
-      // якщо showStops, додаємо зупинки після route завантажилось
-      if (showStops) {
-        await loadStops(route);
-        getLayer(layers.stops, route, dir).addTo(map);
       }
     }
   }
@@ -205,6 +200,11 @@ document.addEventListener('DOMContentLoaded', () => {
           await loadRoute(route);
           layers.routes[route][dir].addTo(map);
           getLayer(layers.buses, route, dir).addTo(map);
+
+          if (showStops) {
+            await loadStops(route);
+            getLayer(layers.stops, route, dir).addTo(map);
+          }
         } else {
           map.removeLayer(layers.routes[route]?.[dir]);
           map.removeLayer(getLayer(layers.buses, route, dir));
