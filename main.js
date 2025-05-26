@@ -89,15 +89,16 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function createBadgeIcon(route, bearing, dir) {
-    const size = 28, c = size/2, r = 9, aLen = 4;
+    const size = 40, c = size/2, r = 15, aLen = 6;
     const color = route.startsWith('T') ? 'darkblue' : 'black';
+    const markerTextSize = 14;
     const svg = `
       <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
         <polygon points="${c-r/2},${c+r*0.8} ${c+r/2},${c+r*0.8} ${c},${c+r+aLen}"
                  fill="${color}"
                  transform="rotate(${bearing+180},${c},${c})"/>
         <circle cx="${c}" cy="${c}" r="${r}" fill="${color}" stroke="#000"/>
-        <text x="${c}" y="${c}" fill="#fff" font-size="8"
+        <text x="${c}" y="${c}" fill="#fff" font-size="${markerTextSize}"
               text-anchor="middle" dominant-baseline="central"
               font-family="sans-serif">${route}</text>
       </svg>`;
