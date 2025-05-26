@@ -3,70 +3,78 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Bus Map</title>
+  <title>Онлайн-карта автобусів Луцька – LutskCityBus</title>
+  <meta name="description"
+        content="Слідкуйте в реальному часі за рухом автобусів і тролейбусів Луцька на інтерактивній карті MyCityBus. Показує маршрути, зупинки та геолокацію користувача." />
+  <link rel="canonical" href="https://lutskcitybus.netlify.app/" />
 
-  <!-- Підключаємо favicon -->
-  <link rel="icon" href="/lutskbusicon.png" type="image/png" sizes="32x32">
+  <!-- Open Graph -->
+  <meta property="og:title" content="LutskCityBus: карта руху автобусів Луцька" />
+  <meta property="og:description" content="Слідкуйте в реальному часі за рухом громадського транспорту Луцька." />
+  <meta property="og:image" content="https://lutskcitybus.netlify.app/lutskbusicon.png" />
+  <meta property="og:url" content="https://lutskcitybus.netlify.app/" />
+  <meta property="og:type" content="website" />
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="LutskCityBus: карта руху автобусів Луцька" />
+  <meta name="twitter:description" content="Слідкуйте в реальному часі за рухом громадського транспорту Луцька." />
+  <meta name="twitter:image" content="https://lutskcitybus.netlify.app/lutskbusicon.png" />
+
+  <!-- Favicon -->
+  <link rel="icon" href="/lutskbusicon.png" type="image/png" sizes="32x32" />
 
   <!-- Bulma CSS -->
-  <link
-    rel="stylesheet"
-    href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css"
-  />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css" />
   <!-- Leaflet CSS -->
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-  />
-  <!-- Font Awesome для іконок -->
-  <link
-    rel="stylesheet"
-    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
-  />
-
-  <!-- Власний CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <!-- Custom CSS -->
   <link rel="stylesheet" href="styles.css" />
 </head>
-<body>
-  <!-- Top Navbar -->
-  <nav class="navbar is-light has-shadow" role="navigation" aria-label="main navigation">
-    <div class="navbar-brand">
-      <a role="button"
-        id="toggle-routes-btn"
-        class="navbar-item is-active"
-        aria-label="Toggle sidebar"
-        aria-expanded="true">
-        <span class="icon"><i class="fas fa-bars"></i></span><span>Маршрути</span>
-      </a>
-      <a id="toggle-stops-btn" class="navbar-item" role="button"
-         aria-pressed="false" title="Показати/сховати зупинки">
-        <span class="icon"><i class="fas fa-map-marker-alt"></i></span>
-        <span>Зупинки</span>
-      </a>
-      <a role="button" id="refresh-btn" class="navbar-item" aria-label="Refresh buses">
-        <span class="icon"><i class="fas fa-sync-alt"></i></span>
-        <span>Оновити</span>
-      </a>
-    </div>
-  </nav>
-  <aside id="sidebar"
-         class="menu"
-         style="width: 220px; position: absolute; top:3.25rem; left:0; bottom:0; overflow-y:auto; background:#fff; z-index: 1000;">
-    <p class="menu-label">Оберіть маршрути</p>
-    <ul class="menu-list" id="routes-list"></ul>
-  </aside>
 
-  <!-- Map -->
-  <div id="map" style="width: 100%; height: calc(100vh - 3.25rem);"></div>
-  
-  <!-- Progress bar -->
-  <div id="progress-container">
-    <div id="progress-bar"></div>
-  </div>
-  
+<body>
+  <header>
+    <nav class="navbar is-light has-shadow" role="navigation" aria-label="main navigation">
+      <div class="navbar-brand">
+        <a role="button" id="toggle-routes-btn" class="navbar-item is-active" aria-label="Toggle routes" aria-expanded="true">
+          <span class="icon"><i class="fas fa-bars"></i></span>
+          <span>Маршрути</span>
+        </a>
+        <a role="button" id="toggle-stops-btn" class="navbar-item" aria-pressed="false" title="Показати/сховати зупинки">
+          <span class="icon"><i class="fas fa-map-marker-alt"></i></span>
+          <span>Зупинки</span>
+        </a>
+        <a role="button" id="refresh-btn" class="navbar-item" aria-label="Refresh buses">
+          <span class="icon"><i class="fas fa-sync-alt"></i></span>
+          <span>Оновити</span>
+        </a>
+      </div>
+    </nav>
+  </header>
+
+  <main class="columns is-gapless">
+    <aside id="sidebar" class="column is-narrow menu" aria-label="Route selection">
+      <p class="menu-label">Оберіть маршрути</p>
+      <ul class="menu-list" id="routes-list"></ul>
+    </aside>
+
+    <section class="column" style="position: relative;">
+      <div id="map" style="width: 100%; height: calc(100vh - 3.25rem);"></div>
+      <div id="progress-container">
+        <div id="progress-bar"></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer has-text-centered">
+    <p>&copy; 2025 LutskCityBus by AndyZoer</p>
+  </footer>
+
   <!-- Leaflet JS -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <!-- Ваш основний скрипт -->
+  <!-- Main script -->
   <script src="main.js"></script>
 </body>
 </html>
