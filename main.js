@@ -19,6 +19,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const ALL_ROUTES     = [...BUS_ROUTES.map(r => 'А'+r), ...TROLLEY_ROUTES.map(r => 'T'+r)];
   
   const busMarkers = {};  
+  const busTimestamps = {};  // busTimestamps[route][dir][busId] = last update ms
+  const busPositions = {};  // busPositions[route][dir][busId] = {lat, lng}
   
   let userMarker     = null;
   let accuracyCircle = null;
@@ -142,6 +144,8 @@ document.addEventListener('DOMContentLoaded', () => {
     layers.buses[route] ||= {};
     busMarkers[route]   ||= {};
     busMarkers[route][dir] ||= {};
+    busPositions[route] ||= {};
+    busPositions[route][dir] ||= {};
 
     // Ініціалізуємо шар, якщо ще не було
     if (!layers.buses[route][dir]) {
@@ -160,14 +164,26 @@ document.addEventListener('DOMContentLoaded', () => {
       if (isNaN(lat) || isNaN(lng)) continue;
 
       if (existing[id]) {
-        // Оновлюємо позицію та кут
+        // Порівнюємо з попередньою позицією
+        const prev = busPositions[route][dir][id];
+        const moved = !prev || Math.abs(prev.lat - lat) > 0.0001 || Math.abs(prev.lng - lng) > 0.0001;
+        // Оновлюємо позицію, кут і непрозорість тільки якщо дійсно рух
         existing[id].setLatLng([lat, lng]);
         existing[id].setIcon(createBadgeIcon(route, bearing, dir));
+        if (moved) {
+          existing[id].setOpacity(1);
+          busTimestamps[route] ||= {};
+          busTimestamps[route][dir] ||= {};
+          busTimestamps[route][dir][id] = Date.now();
+        }
       } else {
         // Створюємо новий маркер
         const marker = L.marker([lat, lng], {
           icon: createBadgeIcon(route, bearing, dir)
         }).addTo(layer);
+        // assign a unique HTML id to the marker's DOM element
+        const el = marker.getElement();
+        if (el) el.id = `marker-${route}-${id}`;
 
         marker.on('click', e => {
           e.originalEvent.stopPropagation();
@@ -176,7 +192,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         existing[id] = marker;
+        busTimestamps[route] ||= {};
+        busTimestamps[route][dir] ||= {};
+        busTimestamps[route][dir][id] = Date.now();
       }
+      // Зберігаємо нові координати
+      busPositions[route][dir][id] = { lat, lng };
 
       seen[id] = true;
     }
@@ -186,6 +207,14 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!seen[oldId]) {
         layer.removeLayer(existing[oldId]);
         delete existing[oldId];
+        // remove timestamp
+        if (busTimestamps[route]?.[dir]) {
+          delete busTimestamps[route][dir][oldId];
+        }
+        // remove position
+        if (busPositions[route]?.[dir]) {
+          delete busPositions[route][dir][oldId];
+        }
       }
     }
   }
@@ -432,4 +461,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     startProgressAnimation();
   }, UPDATE_INTERVAL);
+
+  // make markers that haven't moved for >1 min transparent
+  setInterval(() => {
+    const now = Date.now();
+    for (const [route, dirs] of Object.entries(busMarkers)) {
+      for (const [dir, markers] of Object.entries(dirs)) {
+        for (const [id, marker] of Object.entries(markers)) {
+          const ts = busTimestamps[route]?.[dir]?.[id] || 0;
+          const age = now - ts;
+          const opacity = age > 60000 ? 0.3 : 1;
+          marker.setOpacity(opacity);
+        }
+      }
+    }
+  }, 30000);  // check every 30 seconds
 });
