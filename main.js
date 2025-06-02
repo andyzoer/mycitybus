@@ -263,7 +263,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const lat = +s.lat, lng = +s.lng;
             if (isNaN(lat)||isNaN(lng)) continue;
             L.circleMarker([lat,lng], {
-              radius:3, fill:'#fff', color:'#000', weight:1
+              radius:5, fill:'#fff', color:'#000', weight:1
             }).addTo(stopLayer)
             .bindPopup(
               `<strong>${s.stopName || s.name || 'Зупинка'}</strong>`
@@ -376,6 +376,34 @@ document.addEventListener('DOMContentLoaded', () => {
       .forEach(cb => updateBusMarkers(cb.dataset.route, +cb.dataset.dir));
     // перезапустити анімацію прогрес-бару
     startProgressAnimation();
+  });
+
+  // кнопка "Переключити напрями" — тoggle directions for each route
+  document.getElementById('toggle-dir-btn').addEventListener('click', () => {
+    ALL_ROUTES.forEach(route => {
+      const upCb = document.querySelector(
+        `#routes-list input[data-route="${route}"][data-dir="0"]`
+      );
+      const downCb = document.querySelector(
+        `#routes-list input[data-route="${route}"][data-dir="1"]`
+      );
+      if (upCb && downCb) {
+        // Якщо обидва виключені або обидва ввімкнені — нічого не робимо
+        if (upCb.checked && !downCb.checked) {
+          // переключаємо з "вгору" на "вниз"
+          upCb.checked = false;
+          upCb.dispatchEvent(new Event('change', { bubbles: true }));
+          downCb.checked = true;
+          downCb.dispatchEvent(new Event('change', { bubbles: true }));
+        } else if (!upCb.checked && downCb.checked) {
+          // переключаємо з "вниз" на "вгору"
+          downCb.checked = false;
+          downCb.dispatchEvent(new Event('change', { bubbles: true }));
+          upCb.checked = true;
+          upCb.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      }
+    });
   });
 
   // дотик по карті ховає sidebar
