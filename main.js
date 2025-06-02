@@ -45,7 +45,10 @@ const map = L.map('map', {
   zoomControl: false,
   rotate: true,
   touchRotate: true,
-  rotateControl: { position: 'bottomright' }
+  rotateControl: {
+    position: 'bottomright',
+    closeOnZeroBearing: false
+  }
 });
 
 // Disable auto-centering on any user interaction
