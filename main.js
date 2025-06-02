@@ -22,11 +22,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const busTimestamps = {};  // busTimestamps[route][dir][busId] = last update ms
   const busPositions = {};  // busPositions[route][dir][busId] = {lat, lng}
   
-  let userMarker     = null;
-  let accuracyCircle = null;
-  let selectedRoute  = null;   // { route, dir } або null
-  let showStops      = false;  // чи відображати 
-  let showRoutes     = true;
+let userMarker     = null;
+let accuracyCircle = null;
+let selectedRoute  = null;   // { route, dir } або null
+let showStops      = false;  // чи відображати 
+let showRoutes     = true;
+let autoCenter     = false;
 
   // Шари
   const layers = {
@@ -37,37 +38,48 @@ document.addEventListener('DOMContentLoaded', () => {
   // Layer group for nearest stops markers
   const nearestLayer = L.layerGroup();
 
-  // === 2. Ініціалізація карти ===
-  const map = L.map('map', {
-    center: INITIAL_VIEW.center,
-    zoom:   INITIAL_VIEW.zoom,
-    zoomControl: false
-  });
+// === 2. Ініціалізація карти ===
+const map = L.map('map', {
+  center: INITIAL_VIEW.center,
+  zoom:   INITIAL_VIEW.zoom,
+  zoomControl: false
+});
+
+// Disable auto-centering on any user interaction
+map.on('movestart zoomstart rotate start', () => {
+  autoCenter = false;
+});
 
   L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap & CartoDB'
   }).addTo(map);
 
-  // Enable two-finger rotation (and mouse drag-rotate if desired)
-  if (map.touchRotate) map.touchRotate.enable();
-  if (map.dragRotate)  map.dragRotate.enable();
+  // Enable two-finger rotation via leaflet-rotate plugin
+  if (map.rotate) map.rotate.enable();
+  console.log('map.rotate =', map.rotate);
 
   L.control.zoom({ position: 'topright' }).addTo(map);
 
-  // === 3. Геолокація ===
-  map.on('locationfound', e => {
-    const { latitude: lat, longitude: lng, accuracy: acc } = e;
-    if (!userMarker) {
-      userMarker = L.marker([lat, lng], { title: 'Ви тут' }).addTo(map);
-      accuracyCircle = L.circle([lat, lng], { radius: acc }).addTo(map);
-    } else {
-      userMarker.setLatLng([lat, lng]);
-      accuracyCircle.setLatLng([lat, lng]).setRadius(acc);
+// === 3. Геолокація ===
+map.on('locationfound', e => {
+  const { latitude: lat, longitude: lng, accuracy: acc } = e;
+  if (!userMarker) {
+    userMarker = L.marker([lat, lng], { title: 'Ви тут' }).addTo(map);
+    accuracyCircle = L.circle([lat, lng], { radius: acc }).addTo(map);
+    // Center map on first location update
+    map.setView([lat, lng], map.getZoom());
+  } else {
+    userMarker.setLatLng([lat, lng]);
+    accuracyCircle.setLatLng([lat, lng]).setRadius(acc);
+    // Only re-center if autoCenter is true
+    if (autoCenter) {
+      map.panTo([lat, lng]);
     }
-  });
-  map.on('locationerror', e => {
-    console.error('Geolocation error:', e.message);
-  });
+  }
+});
+map.on('locationerror', e => {
+  console.error('Geolocation error:', e.message);
+});
 
   // === 4. Кастомні контролі ===
   // 4.1 Знайти мене
@@ -79,8 +91,11 @@ document.addEventListener('DOMContentLoaded', () => {
       a.href = '#'; a.title = 'Знайти мене';
       a.innerHTML = '<i class="fas fa-crosshairs"></i>';
       L.DomEvent.disableClickPropagation(c);
-      L.DomEvent.on(a,'click',L.DomEvent.stop)
-               .on(a,'click',() => map.locate({ watch: true, setView: true, maxZoom: 15, ...GEO_OPTIONS }));
+      L.DomEvent.on(a, 'click', L.DomEvent.stop)
+               .on(a, 'click', () => {
+                 autoCenter = true;
+                 map.locate({ watch: true, maxZoom: 15, ...GEO_OPTIONS });
+               });
       return c;
     }
   });
