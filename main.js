@@ -45,9 +45,7 @@ const map = L.map('map', {
   zoomControl: false,
   rotate: true,
   touchRotate: true,
-  // Включити вбудований контрол обертання і розмістити його внизу праворуч
-  rotateControl: true,
-  rotateControlOptions: { position: 'bottomright' }
+  rotateControl: { position: 'bottomright' }
 });
 
 // Disable auto-centering on any user interaction
