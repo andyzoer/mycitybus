@@ -48,6 +48,10 @@ document.addEventListener('DOMContentLoaded', () => {
     attribution: '&copy; OpenStreetMap & CartoDB'
   }).addTo(map);
 
+  // Enable two-finger rotation (and mouse drag-rotate if desired)
+  if (map.touchRotate) map.touchRotate.enable();
+  if (map.dragRotate)  map.dragRotate.enable();
+
   L.control.zoom({ position: 'topright' }).addTo(map);
 
   // === 3. Геолокація ===
@@ -97,6 +101,26 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
   map.addControl(new HomeControl());
+
+  // === Reset Orientation Control ===
+  const ResetOrientationControl = L.Control.extend({
+    options: { position: 'bottomright' },
+    onAdd(map) {
+      const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
+      const link = L.DomUtil.create('a', '', container);
+      link.href = '#';
+      link.title = 'Скинути орієнтацію';
+      link.innerHTML = '<i class="fas fa-sync-alt"></i>';
+      L.DomEvent.disableClickPropagation(container);
+      L.DomEvent.on(link, 'click', L.DomEvent.stop)
+               .on(link, 'click', () => {
+                 if (map.setBearing) map.setBearing(0);
+                 else if (map.resetRotate) map.resetRotate();
+               });
+      return container;
+    }
+  });
+  map.addControl(new ResetOrientationControl());
 
   // === 5. Логіка маршрутів і зупинок ===
   function getRouteColor(route, dir) {
