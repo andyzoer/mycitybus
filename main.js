@@ -417,15 +417,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ===  "Найближчі зупинки" ===
   document.getElementById('nearest-stops-btn').addEventListener('click', async () => {
-    // clear any existing nearest markers
-    nearestLayer.clearLayers();
-    // get current map center
+    const btn = document.getElementById('nearest-stops-btn');
+    // If nearestLayer already has markers, clear and hide, and unset button state
+    if (nearestLayer.getLayers().length > 0) {
+      nearestLayer.clearLayers();
+      btn.classList.remove('is-active');
+      btn.setAttribute('aria-pressed', 'false');
+      return;
+    }
+    // Otherwise, set button active and fetch & show nearest stops
+    btn.classList.add('is-active');
+    btn.setAttribute('aria-pressed', 'true');
     const center = map.getCenter();
     const url = `https://uaservice.kentkart.com/rl1/web/nearest/place?region=118&lang=uk&lat=${center.lat}&lng=${center.lng}`;
     let json;
     try { json = await fetch(url).then(r => r.json()); }
     catch (e) {
       console.error('Fetch nearest stops error', e);
+      // Reset button if fetch fails
+      btn.classList.remove('is-active');
+      btn.setAttribute('aria-pressed', 'false');
       return;
     }
     const stops = json.stopList || [];
@@ -463,8 +474,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
           });
         });
-        // remove nearest markers after selection
+        // remove nearest markers after selection, reset button
         nearestLayer.clearLayers();
+        btn.classList.remove('is-active');
+        btn.setAttribute('aria-pressed', 'false');
       });
     });
     // add all markers to map

@@ -82,7 +82,8 @@
 
     /* підсвічуємо кнопку, коли активна */
     #toggle-stops-btn.is-active,
-    #toggle-routes-btn.is-active  {
+    #toggle-routes-btn.is-active,
+    #nearest-stops-btn.is-active  {
       background-color: #1978c8;
       color: #fff;
     }
