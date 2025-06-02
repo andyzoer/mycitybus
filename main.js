@@ -356,6 +356,7 @@ map.on('locationerror', e => {
 
         // 3) Після будь-якої зміни чекбоксу оновлюємо прогрес-бар
         updateProgressVisibility();
+        updateClearButtonState();
 
         // persist selected checkboxes
         settings.selected = Array.from(
@@ -507,6 +508,22 @@ map.on('locationerror', e => {
     nearestLayer.addTo(map);
   });
 
+  // 11.x Очистити маршрути — знімає всі галочки і ховає шари маршрутів, автобусів та зупинок
+  document.getElementById('clear-routes-btn').addEventListener('click', () => {
+    // Знімаємо всі чекбокси
+    document.querySelectorAll('#routes-list input[type="checkbox"]').forEach(cb => {
+      if (cb.checked) {
+        cb.checked = false;
+        cb.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    });
+    // Очищаємо збережені налаштування маршрутів
+    settings.selected = [];
+    saveSettings(settings);
+    // Оновлюємо прогрес-бар (ховаємо, якщо більше немає видимих маршрутів)
+    updateProgressVisibility();
+  });
+
   // дотик по карті ховає sidebar
   const sidebar = document.getElementById('sidebar');
   map.getContainer().addEventListener('pointerdown', e => {
@@ -529,6 +546,7 @@ map.on('locationerror', e => {
 
   // === 12. Старт ===
   buildSidebar();
+  updateClearButtonState();
 
   // restore selected routes from localStorage
   settings.selected.forEach(key => {
@@ -541,6 +559,7 @@ map.on('locationerror', e => {
       cb.dispatchEvent(new Event('change', { bubbles: true }));
     }
   });
+  updateClearButtonState();
 
   // restore showStops button
   const stopsBtn = document.getElementById('toggle-stops-btn');
@@ -560,6 +579,11 @@ map.on('locationerror', e => {
   // Функція, що повертає true, якщо є хоч один показаний маршрут
   function anyRouteVisible() {
     return document.querySelectorAll('#routes-list input[type=checkbox]:checked').length > 0;
+  }
+
+  function updateClearButtonState() {
+    const btn = document.getElementById('clear-routes-btn');
+    btn.disabled = !anyRouteVisible();
   }
 
   // Показати/сховати прогрес-бар залежно від наявності видимих маршрутів
