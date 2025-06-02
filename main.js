@@ -74,7 +74,7 @@ document.addEventListener('DOMContentLoaded', () => {
       a.innerHTML = '<i class="fas fa-crosshairs"></i>';
       L.DomEvent.disableClickPropagation(c);
       L.DomEvent.on(a,'click',L.DomEvent.stop)
-               .on(a,'click',() => map.locate({ setView: true, maxZoom: 15, ...GEO_OPTIONS }));
+               .on(a,'click',() => map.locate({ watch: true, setView: true, maxZoom: 15, ...GEO_OPTIONS }));
       return c;
     }
   });
