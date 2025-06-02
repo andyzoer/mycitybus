@@ -42,7 +42,9 @@ let autoCenter     = false;
 const map = L.map('map', {
   center: INITIAL_VIEW.center,
   zoom:   INITIAL_VIEW.zoom,
-  zoomControl: false
+  zoomControl: false,
+  rotate: true,
+  touchRotate: true
 });
 
 // Disable auto-centering on any user interaction
@@ -54,9 +56,7 @@ map.on('movestart zoomstart rotate start', () => {
     attribution: '&copy; OpenStreetMap & CartoDB'
   }).addTo(map);
 
-  // Enable two-finger rotation via leaflet-rotate plugin
-  if (map.rotate) map.rotate.enable();
-  console.log('map.rotate =', map.rotate);
+  console.log('map.rotate =', map.touchRotate);
 
   L.control.zoom({ position: 'topright' }).addTo(map);
 
