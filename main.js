@@ -34,6 +34,8 @@ document.addEventListener('DOMContentLoaded', () => {
     buses:  {},  // layers.buses[route][dir]  = L.LayerGroup
     stops:  {}   // layers.stops[route][dir]  = L.LayerGroup
   };
+  // Layer group for nearest stops markers
+  const nearestLayer = L.layerGroup();
 
   // === 2. Ініціалізація карти ===
   const map = L.map('map', {
@@ -354,6 +356,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const btn = document.getElementById('toggle-stops-btn');
     btn.classList.toggle('is-active', showStops);
     btn.setAttribute('aria-pressed', showStops);
+    // Update button label
+    const textSpan = btn.querySelector('span:last-child');
+    if (showStops) {
+      textSpan.textContent = 'Приховати зупинки';
+    } else {
+      textSpan.textContent = 'Показувати зупинки';
+    }
 
     settings.showStops = showStops;
     saveSettings(settings);
@@ -406,6 +415,62 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  // ===  "Найближчі зупинки" ===
+  document.getElementById('nearest-stops-btn').addEventListener('click', async () => {
+    // clear any existing nearest markers
+    nearestLayer.clearLayers();
+    // get current map center
+    const center = map.getCenter();
+    const url = `https://uaservice.kentkart.com/rl1/web/nearest/place?region=118&lang=uk&lat=${center.lat}&lng=${center.lng}`;
+    let json;
+    try { json = await fetch(url).then(r => r.json()); }
+    catch (e) {
+      console.error('Fetch nearest stops error', e);
+      return;
+    }
+    const stops = json.stopList || [];
+    // create a large marker for each stop
+    stops.forEach(s => {
+      const lat = +s.lat, lng = +s.lng;
+      if (isNaN(lat) || isNaN(lng)) return;
+      const marker = L.circleMarker([lat, lng], {
+        radius: 10,
+        fillColor: 'red',
+        color: '#fff',
+        weight: 2,
+        fillOpacity: 0.8
+      }).addTo(nearestLayer);
+      marker.bindPopup(`<strong>${s.stopName}</strong>`);
+      marker.on('click', () => {
+        // clear all checked route-directions
+        document.querySelectorAll('#routes-list input[type="checkbox"]').forEach(cb => {
+          if (cb.checked) {
+            cb.checked = false;
+            cb.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+        });
+        // enable only routes serving this stop
+        const routeCodes = (s.routes || '').split(',');
+        routeCodes.forEach(routeCode => {
+          // both directions 0 and 1
+          [0, 1].forEach(d => {
+            const cb = document.querySelector(
+              `#routes-list input[data-route="${routeCode}"][data-dir="${d}"]`
+            );
+            if (cb && !cb.checked) {
+              cb.checked = true;
+              cb.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+          });
+        });
+        // remove nearest markers after selection
+        nearestLayer.clearLayers();
+      });
+    });
+    // add all markers to map
+    nearestLayer.addTo(map);
+  });
+
   // дотик по карті ховає sidebar
   const sidebar = document.getElementById('sidebar');
   map.getContainer().addEventListener('pointerdown', e => {
@@ -447,6 +512,7 @@ document.addEventListener('DOMContentLoaded', () => {
     showStops = true;
     stopsBtn.classList.add('is-active');
     stopsBtn.setAttribute('aria-pressed', 'true');
+    stopsBtn.querySelector('span:last-child').textContent = 'Приховувати зупинки';
   }
 
   const progressContainer = document.getElementById('progress-container');

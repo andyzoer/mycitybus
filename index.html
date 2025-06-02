@@ -46,9 +46,9 @@
           <span class="icon"><i class="fas fa-bars"></i></span>
           <span>Маршрути</span>
         </a>
-        <a role="button" id="toggle-stops-btn" class="navbar-item" aria-pressed="false" title="Показати/сховати зупинки">
+        <a role="button" id="nearest-stops-btn" class="navbar-item" aria-label="Nearest stops">
           <span class="icon"><i class="fas fa-map-marker-alt"></i></span>
-          <span>Зупинки</span>
+          <span>Найближчі зупинки</span>
         </a>
         <a role="button" id="refresh-btn" class="navbar-item" aria-label="Refresh buses">
           <span class="icon"><i class="fas fa-sync-alt"></i></span>
@@ -66,6 +66,10 @@
         <span>Переключити напрями</span>
       </button>
       <ul class="menu-list" id="routes-list"></ul>
+      <button id="toggle-stops-btn" class="button is-small is-link is-fullwidth" type="button" style="margin-top: 0.5em;">
+        <span class="icon"><i class="fas fa-map-marker-alt"></i></span>
+        <span>Показувати зупинки</span>
+      </button>
     </aside>
 
     <section class="column" style="position: relative;">
