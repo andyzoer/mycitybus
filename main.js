@@ -286,14 +286,24 @@ map.on('locationerror', e => {
           const stopLayer = getLayer(layers.stops, route, dir);
           if (stopLayer.getLayers().length) continue;
           for (const s of path.busStopList||[]) {
+            const name = (s.stopName || s.name || '').toLowerCase();
             const lat = +s.lat, lng = +s.lng;
             if (isNaN(lat)||isNaN(lng)) continue;
-            L.circleMarker([lat,lng], {
-              radius:5, fill:'#fff', color:'#000', weight:1
-            }).addTo(stopLayer)
-            .bindPopup(
-              `<strong>${s.stopName || s.name || 'Зупинка'}</strong>`
-            );
+            const isGray = name.includes('рейс') || name.includes('тест');
+            const marker = L.circleMarker([lat, lng], {
+              radius: 5,
+              fill: isGray ? '#ccc' : '#fff',
+              color: isGray ? '#888' : '#000',
+              weight: 1
+            }).addTo(stopLayer);
+
+            const stopLabel = s.stopName || s.name || 'Зупинка';
+            marker.bindPopup(`<strong>${stopLabel}</strong>`);
+            marker.bindTooltip(stopLabel, {
+              permanent: true,
+              direction: 'right',
+              className: 'stop-label'
+            });
           }
         }
       }
@@ -464,19 +474,30 @@ map.on('locationerror', e => {
       btn.setAttribute('aria-pressed', 'false');
       return;
     }
-    const stops = json.stopList || [];
+    const stops = (json.stopList || []).filter(s => s.routes && s.routes.trim() !== '');
     // create a large marker for each stop
     stops.forEach(s => {
       const lat = +s.lat, lng = +s.lng;
       if (isNaN(lat) || isNaN(lng)) return;
+      const name = (s.stopName || '').toLowerCase();
+      const isGray = name.includes('рейс') || name.includes('тест');
       const marker = L.circleMarker([lat, lng], {
         radius: 10,
-        fillColor: 'red',
+        fillColor: isGray ? '#888' : 'red',
         color: '#fff',
         weight: 2,
-        fillOpacity: 0.8
+        fillOpacity: 0.8,
+        id: 0
       }).addTo(nearestLayer);
-      marker.bindPopup(`<strong>${s.stopName}</strong>`);
+
+      const stopLabel = s.stopName || 'Зупинка';
+      marker.bindPopup(`<strong>${stopLabel}</strong>`);
+      marker.bindTooltip(stopLabel, {
+        permanent: true,
+        direction: 'right',
+        className: 'nearest-stop-label'
+      });
+
       marker.on('click', () => {
         // clear all checked route-directions
         document.querySelectorAll('#routes-list input[type="checkbox"]').forEach(cb => {
