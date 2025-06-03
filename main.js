@@ -128,6 +128,13 @@ map.on('locationerror', e => {
     return `hsl(${(hue + dir*60)%360},70%,50%)`;
   }
 
+  // Дозволяє зменшити кількість точок у маршруті до maxPoints
+  function decimatePoints(pts, maxPoints = 300) {
+    if (pts.length <= maxPoints) return pts;
+    const step = Math.ceil(pts.length / maxPoints);
+    return pts.filter((_, idx) => idx % step === 0);
+  }
+
   function createBadgeIcon(route, bearing, dir) {
     const size = 40, c = size/2, r = 15, aLen = 6;
     const color = route.startsWith('T') ? 'darkblue' : 'black';
@@ -308,11 +315,14 @@ map.on('locationerror', e => {
       const dir = +path.direction;
       // polyline
       if (!layers.routes[route]?.[dir] && path.pointList.length) {
-        const pts = path.pointList.map(p=>[+p.lat,+p.lng]);
+        // Отримуємо сирі точки маршруту і зменшуємо їх кількість
+        const rawPts = path.pointList.map(p => [+p.lat, +p.lng]);
+        const pts = decimatePoints(rawPts, 300);
         const poly = L.polyline(pts, {
           color: getRouteColor(route, dir),
           weight: 3,
-          renderer: L.canvas()
+          smoothFactor: 1.8,      // спрощення шляхові на малих масштабах
+          interactive: false      // вимикаємо взаємодію миші для підвищення швидкодії
         }).addTo(map);
         layers.routes[route] ||= {};
         layers.routes[route][dir] = poly;
