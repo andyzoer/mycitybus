@@ -321,6 +321,7 @@ map.on('locationerror', e => {
         const poly = L.polyline(pts, {
           color: getRouteColor(route, dir),
           weight: 3,
+          renderer: L.canvas(),
           smoothFactor: 1.8,      // спрощення шляхові на малих масштабах
           interactive: false      // вимикаємо взаємодію миші для підвищення швидкодії
         }).addTo(map);
