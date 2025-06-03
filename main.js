@@ -309,7 +309,11 @@ map.on('locationerror', e => {
       // polyline
       if (!layers.routes[route]?.[dir] && path.pointList.length) {
         const pts = path.pointList.map(p=>[+p.lat,+p.lng]);
-        const poly = L.polyline(pts, { color:getRouteColor(route,dir), weight:3 }).addTo(map);;
+        const poly = L.polyline(pts, {
+          color: getRouteColor(route, dir),
+          weight: 3,
+          renderer: L.canvas()
+        }).addTo(map);
         layers.routes[route] ||= {};
         layers.routes[route][dir] = poly;
       }
