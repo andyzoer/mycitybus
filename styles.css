@@ -95,6 +95,7 @@
 
     .disable-marker-transition .leaflet-marker-icon {
       transition: none !important;
+      display: none;
     }
 
     /* Контейнер смужки */
