@@ -121,3 +121,64 @@
     footer p{
       font-size:8px;
     }
+/* Кнопки напрямків маршрутів */
+.dir-btn {
+  border: 1px solid #bbb;
+  background: #f6f6f6;
+  color: #1978c8;
+  border-radius: 2px;
+  font-size: 1.1em;
+  font-weight: bold;
+  width: 2.1em;
+  height: 2.1em;
+  margin: 0 2px;
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s, border 0.18s;
+  outline: none;
+  vertical-align: middle;
+  user-select: none;
+}
+
+.dir-btn:hover {
+  background: #e0eaff;
+  border-color: #1978c8;
+  color: #125899;
+}
+
+.dir-btn.is-active {
+  background: #1978c8;
+  color: #fff;
+  border-color: #1978c8;
+  box-shadow: 0 2px 8px 0 rgba(25,120,200,0.09);
+}
+
+.dir-btn {
+  padding: 0 0.9em;
+  min-width: 6em;
+  justify-content: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+}
+
+.bus-btn {
+  color: #222;
+  border-color: #444;
+  background: #f9f9f9;
+}
+.bus-btn.is-active {
+  background: #111;
+  color: #fff;
+  border-color: #111;
+}
+
+.trolley-btn {
+  color: #1978c8;
+  border-color: #1978c8;
+  background: #f6faff;
+}
+.trolley-btn.is-active {
+  background: #1978c8;
+  color: #fff;
+  border-color: #1978c8;
+}
