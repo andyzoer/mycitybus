@@ -60,8 +60,6 @@ map.on('movestart zoomstart rotate start', () => {
     attribution: '&copy; OpenStreetMap & CartoDB'
   }).addTo(map);
 
-  console.log('map.rotate =', map.touchRotate);
-
   L.control.zoom({ position: 'topright' }).addTo(map);
 
 // === 3. Геолокація ===
@@ -299,11 +297,11 @@ map.on('locationerror', e => {
 
             const stopLabel = s.stopName || s.name || 'Зупинка';
             marker.bindPopup(`<strong>${stopLabel}</strong>`);
-            marker.bindTooltip(stopLabel, {
-              permanent: true,
-              direction: 'right',
-              className: 'stop-label'
-            });
+            // marker.bindTooltip(stopLabel, {
+            //   permanent: true,
+            //   direction: 'right',
+            //   className: 'stop-label'
+            // });
           }
         }
       }
