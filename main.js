@@ -21,7 +21,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const busMarkers = {};  
   const busTimestamps = {};  // busTimestamps[route][dir][busId] = last update ms
   const busPositions = {};  // busPositions[route][dir][busId] = {lat, lng}
-  
+  const busBearings = {};    // busBearings[route][dir][busId] = bearing (° від півночі)
+
 let userMarker     = null;
 let accuracyCircle = null;
 let selectedRoute  = null;   // { route, dir } або null
@@ -170,6 +171,8 @@ map.on('locationerror', e => {
     busMarkers[route][dir] ||= {};
     busPositions[route] ||= {};
     busPositions[route][dir] ||= {};
+    busBearings[route]  ||= {};
+    busBearings[route][dir] ||= {};
 
     // Ініціалізуємо шар, якщо ще не було
     if (!layers.buses[route][dir]) {
@@ -187,13 +190,20 @@ map.on('locationerror', e => {
       const bearing = +b.bearing || 0;
       if (isNaN(lat) || isNaN(lng)) continue;
 
+      // Зберігаємо "чистий" азимут автобуса (без урахування кута карти)
+      busBearings[route][dir][id] = bearing;
+
       if (existing[id]) {
         // Порівнюємо з попередньою позицією
         const prev = busPositions[route][dir][id];
         const moved = !prev || Math.abs(prev.lat - lat) > 0.0001 || Math.abs(prev.lng - lng) > 0.0001;
         // Оновлюємо позицію, кут і непрозорість тільки якщо дійсно рух
         existing[id].setLatLng([lat, lng]);
-        existing[id].setIcon(createBadgeIcon(route, bearing, dir));
+        
+        // Оновлюємо іконку з корекцією на поточний кут карти
+        const mapBearing = map.getBearing() || 0;
+        existing[id].setIcon(createBadgeIcon(route, bearing - mapBearing, dir));
+
         if (moved) {
           existing[id].setOpacity(1);
           busTimestamps[route] ||= {};
@@ -202,9 +212,12 @@ map.on('locationerror', e => {
         }
       } else {
         // Створюємо новий маркер
-        const marker = L.marker([lat, lng], {
-          icon: createBadgeIcon(route, bearing, dir)
-        }).addTo(layer);
+        const mapBearing = map.getBearing() || 0;
+         const marker = L.marker([lat, lng], {
+           icon: createBadgeIcon(route, bearing - mapBearing, dir)
+         }).addTo(layer);
+
+
         // зробити щойно створений маркер прозорим
         marker.setOpacity(0.7);
         // assign a unique HTML id to the marker's DOM element
@@ -245,6 +258,23 @@ map.on('locationerror', e => {
     }
   }
   }
+
+  // === При обертанні карти оновлюємо іконки автобусів ===
+  map.on('rotate', () => {
+    const mapBearing = map.getBearing() || 0;
+    // Проходимося по всім збереженим чистим азимутам busBearings
+    for (const [route, dirs] of Object.entries(busBearings)) {
+      for (const [d, bearings] of Object.entries(dirs)) {
+        for (const [id, bearing] of Object.entries(bearings)) {
+          const marker = busMarkers[route]?.[d]?.[id];
+          if (marker) {
+            // Перераховуємо іконку з урахуванням кута карти
+            marker.setIcon(createBadgeIcon(route, bearing + mapBearing, +d));
+          }
+        }
+      }
+    }
+  });
 
   // === 7. Завантажити полілінію і маркери разом ===
   async function loadRoute(route, dir) {
