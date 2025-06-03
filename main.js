@@ -259,6 +259,26 @@ map.on('locationerror', e => {
   }
   }
 
+  // Коли починається анімація зуму—додаємо клас, що відключає transition
+  map.on('zoomstart', () => {
+    map.getContainer().classList.add('disable-marker-transition');
+  });
+
+  // Коли анімація зуму завершилася—поновлюємо клас, щоб переходи знову працювали
+  map.on('zoomend', () => {
+    map.getContainer().classList.remove('disable-marker-transition');
+  });
+
+  // Коли починається обертання карти—додаємо клас, що відключає transition
+  map.on('rotatestart', () => {
+    map.getContainer().classList.add('disable-marker-transition');
+  });
+
+  // Коли обертання карти завершилося—відновлюємо transition
+  map.on('rotateend', () => {
+    map.getContainer().classList.remove('disable-marker-transition');
+  });
+
   // === При обертанні карти оновлюємо іконки автобусів ===
   map.on('rotate', () => {
     const mapBearing = map.getBearing() || 0;

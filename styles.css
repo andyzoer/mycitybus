@@ -93,6 +93,10 @@
       transition: transform 0.5s ease-out;
     }
 
+    .disable-marker-transition .leaflet-marker-icon {
+      transition: none !important;
+    }
+
     /* Контейнер смужки */
     #progress-container {
       position: absolute;
